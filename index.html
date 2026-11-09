@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text Portrait</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #000;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="out"></canvas>
+
+  <script>
+    // Keep ila.jpeg in the same folder as this HTML file.
+    const PHOTO = "ila.jpeg";
+    const TEXT = "ew,so-unhygienicc";
+
+    const COLS = 120;
+    const CELL_W = 8;
+    const CELL_H = 10;
+    const CUTOFF = 0.08;
+    const CONTRAST = 1.4;
+
+    const img = new Image();
+
+    img.onload = () => {
+      // Account for the taller height of image pixels compared with text cells.
+      const rows = Math.round(
+        COLS * (img.height / img.width) * (CELL_W / CELL_H)
+      );
+
+      const small = document.createElement("canvas");
+      small.width = COLS;
+      small.height = rows;
+
+      const smallCtx = small.getContext("2d", {
+        willReadFrequently: true
+      });
+
+      smallCtx.drawImage(img, 0, 0, COLS, rows);
+
+      const pixels = smallCtx.getImageData(
+        0, 0, COLS, rows
+      ).data;
+
+      const out = document.getElementById("out");
+      out.width = COLS * CELL_W;
+      out.height = rows * CELL_H;
+
+      const ctx = out.getContext("2d");
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, out.width, out.height);
+
+      ctx.font = `bold ${CELL_H}px monospace`;
+      ctx.textBaseline = "top";
+
+      let charIndex = 0;
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const pixelIndex = (y * COLS + x) * 4;
+
+          const r = pixels[pixelIndex];
+          const g = pixels[pixelIndex + 1];
+          const b = pixels[pixelIndex + 2];
+
+          // Use photo brightness to shape the portrait.
+          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          const brightness = Math.pow(luminance, CONTRAST);
+
+          if (brightness > CUTOFF) {
+            const alpha = Math.min(1, brightness);
+
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fillText(
+              TEXT[charIndex % TEXT.length],
+              x * CELL_W,
+              y * CELL_H
+            );
+          }
+
+          charIndex++;
+        }
+      }
+    };
+
+    img.onerror = () => {
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        '<p style="color:white;font-family:sans-serif;">Could not load ila.jpeg. Check that the image is in the same folder as this HTML file.</p>'
+      );
+    };
+
+    img.src = PHOTO;
+  </script>
+</body>
+</html>
